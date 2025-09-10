@@ -1,0 +1,704 @@
+{
+  "name": "SpecGen Agent case study",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Product Specs",
+          "cachedResultUrl": ""
+        },
+        "title": "={{ $json[\"message\"][\"content\"].split(\"\\n\")[0] }}",
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Tittle|title",
+              "title": "={{ $json[\"message\"][\"content\"].split(\"\\n\").find(l => l.trim()).replace(/^#+\\s*/, \"\").trim().slice(0,200) }}"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "Draft"
+            },
+            {
+              "key": "Created Date|date",
+              "date": "2025-09-08T00:00:00"
+            },
+            {
+              "key": "Product Spec|rich_text",
+              "textContent": "={{ $json.message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5004c1e1-0bfc-4743-aae0-097fc833948c",
+      "name": "Create Notion Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        272
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "={{ String($json.channel_id ?? 'product-ideas') }}",
+        "text": "=✅ Confirmation: the spec has been created and linked to this thread.\n🔗 <{{ $json.url }}|View Notion page>\n",
+        "otherOptions": {
+          "thread_ts": "={{ $json.event_ts || $json.thread_ts || $node[\"Capture the Idea from Slack\"].json.event_ts || '' }}"
+        },
+        "attachments": []
+      },
+      "id": "9d027128-c561-425b-bf92-164a90920814",
+      "name": "Notify in Slack Thread",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        272
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "GPT-3.5-TURBO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You extract 2–3 canonical keywords for customer-feedback search.\n\n### Allowed vocabulary (use only these exact strings; no variants):\n- natural language q&a\n- automated insights detection\n- predictive analytics\n- anomaly detection\n- executive dashboard\n- one-click report generation\n- real-time visualization\n- natural-language queries\n- customizable alert system\n- power bi integration\n- tableau integration\n\n### Selection rules\n- Pick 2–3 that best represent the user needs in the input.\n- Prefer these three when present: \n  natural language q&a, automated insights detection, predictive analytics.\n- If unsure or none match clearly, return the default fallback:\n  natural language q&a, automated insights detection, predictive analytics.\n\n### Output format (must be EXACTLY this):\n- lowercase\n- comma-separated\n- no spaces around commas (e.g., \"a,b,c\")\n- no explanations or extra text\n\n### Input\n{{ $('Summarize & Format').item.json.message.content }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -128,
+        272
+      ],
+      "id": "6371e113-bd05-47b8-ac57-cc611d0b2ea4",
+      "name": "Extract Key Terms",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "trigger": [
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "product-ideas"
+        },
+        "options": {
+          "resolveIds": false
+        }
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1824,
+        368
+      ],
+      "id": "988db9a4-db27-4fd7-b4af-d02166b32dff",
+      "name": "Capture the Idea from Slack",
+      "webhookId": "",
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1152,
+        368
+      ],
+      "id": "e18e53e1-4172-4838-8fe4-bf1d376dca9f",
+      "name": "Convert Voice to Text",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "GPT-3.5-TURBO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Product Manager assistant. Transform this transcript into a structured Product Specification Document.\n\nIMPORTANT: Extract all details from the transcript and create a comprehensive spec. Be specific and actionable.\n\nOutput Format (Markdown):\n\n# Short title\n\n# Product Specification\n\n## The Problem\n[Detailed description of the user problem, pain points, and current challenges based on the transcript]\n\n## The Solution  \n[Comprehensive description of the proposed feature/solution with specific details]\n\n## Key Features\n- [Feature 1 with detailed description]\n- [Feature 2 with detailed description]  \n- [Feature 3 with detailed description]\n- [Additional features as mentioned in transcript]\n\n## Success Metrics\n- [Specific, measurable metric with target]\n- [User adoption metric with percentage/number]\n- [Business impact metric with clear KPI]\n- [Performance metric if applicable]\n\n## Implementation Notes\n[Any technical details or requirements mentioned]\n\n\nTranscript:\n{{ $json.text }}\n"
+            },
+            {
+              "content": "Constraints:\n- The entire response must be 1000 characters or less.",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -704,
+        272
+      ],
+      "id": "84a01999-d58b-44d5-afd7-80db72946b71",
+      "name": "Summarize & Format",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "file",
+        "operation": "get",
+        "fileId": "={{ $json.files[0].id }}"
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -1600,
+        368
+      ],
+      "id": "1919c17c-f89b-45e7-bcc9-cba354d76b8a",
+      "name": "Get a file",
+      "webhookId": "",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $node[\"Create Notion Page\"].json.id }}",
+          "mode": "id"
+        },
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Competitor Landscape|rich_text",
+              "textContent": "={{ $json.message_content }}"
+            },
+            {
+              "key": "Customer Feedback|rich_text",
+              "textContent": "={{ $json.customer_feedback_str }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        272
+      ],
+      "id": "4b676448-3900-47da-be6e-bb8df2687108",
+      "name": "Update a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "query": "={{\n  ($json.message?.content || '')\n    .toLowerCase()\n    .split(/[,\\n]/)\n    .map(k => k.trim())\n    .filter(Boolean)\n    .join(' OR ')\n  + ' in:#customer-feedback'\n}}\n\n\n",
+        "limit": 50,
+        "options": {
+          "searchChannel": []
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        416
+      ],
+      "id": "628cc4ec-2730-4b3e-a4c8-63fefefb6f5d",
+      "name": "Search for messages",
+      "webhookId": "",
+      "alwaysOutputData": true,
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "User Token"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        272
+      ],
+      "id": "ca464bc0-6bf8-4df4-8968-d00b16ba5e4b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Toma TODOS los items de entrada (en tu caso 2) y los fusiona en uno.\n// Soporta que venga message.content en un item y customer_feedback_str en otro.\n\nconst items = $input.all();\nconst out = {};\n\n// Recorremos y recogemos campos, si existen\nfor (const it of items) {\n  const j = it.json || {};\n  if (j.message?.content) out.message_content = j.message.content;\n  if (j.finish_reason) out.finish_reason = j.finish_reason;\n  if (j.customer_feedback_str) out.customer_feedback_str = j.customer_feedback_str;\n  if (j.top3_count !== undefined) out.top3_count = j.top3_count;\n}\n\n// Extra: aseguramos que la page NO esté archivada cuando la actualicemos\nout.archived = false;\n\n// Si querés sanear strings (opcional):\n// out.message_content = (out.message_content || \"\").toString();\n// out.customer_feedback_str = (out.customer_feedback_str || \"\").toString();\n\nreturn [{ json: out }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        272
+      ],
+      "id": "a5dc5b91-fa03-4110-8fd0-dab5f574ba73",
+      "name": "Normalize Notion Payload"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Slack Matches → Bulleted summary (with safe fallback)\n// Input shape esperado: cada item es un \"match\" como el que pegaste (con .text, .blocks, .ts, .permalink)\n\nfunction extractText(row) {\n  // 1) usa .text si existe\n  if (row?.text) return String(row.text);\n\n  // 2) si no, arma texto desde blocks (rich_text)\n  const out = [];\n  (function walk(n) {\n    if (!n) return;\n    if (Array.isArray(n)) return n.forEach(walk);\n    if (typeof n === 'object') {\n      if (n.text) out.push(String(n.text));\n      if (n.elements) walk(n.elements);\n      if (n.blocks) walk(n.blocks);\n    }\n  })(row?.blocks);\n  return out.join(' ').trim();\n}\n\ntry {\n  const items = $input.all();\n  const rows = (Array.isArray(items) ? items : []).map(i => i.json ?? i).filter(Boolean);\n\n  if (!rows.length) {\n    return [{\n      json: {\n        customer_feedback_str: \"No customer feedback\",\n        top_count: 0,\n        status: \"empty-input\"\n      }\n    }];\n  }\n\n  // Limpia, extrae texto y ordena por ts desc\n  const cleaned = rows.map(r => {\n    const text = extractText(r).replace(/\\s+/g, ' ').trim();\n    const tsNum = Number(r.ts || 0) || 0;\n    const link = r.permalink || '';\n    return { text, ts: tsNum, link };\n  }).filter(x => x.text);\n\n  if (!cleaned.length) {\n    return [{\n      json: {\n        customer_feedback_str: \"No customer feedback\",\n        top_count: 0,\n        status: \"no-text-after-extract\"\n      }\n    }];\n  }\n\n  cleaned.sort((a, b) => b.ts - a.ts);\n\n  // Armá bullets (podés ajustar el top N)\n  const TOP_N = 5;\n  const bullets = cleaned.slice(0, TOP_N)\n    .map(x => x.link ? `• ${x.text}  (${x.link})` : `• ${x.text}`)\n    .join('\\n')\n    .slice(0, 1999); // cap por si va a Notion\n\n  return [{\n    json: {\n      customer_feedback_str: bullets,\n      top_count: Math.min(TOP_N, cleaned.length),\n      status: \"ok\"\n    }\n  }];\n\n} catch (err) {\n  return [{\n    json: {\n      customer_feedback_str: \"No customer feedback\",\n      top_count: 0,\n      status: \"exception\",\n      error_message: String(err?.message || \"unknown\")\n    }\n  }];\n}\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        416
+      ],
+      "id": "f73774c9-5d94-44f6-add5-47c6cf1117cd",
+      "name": "Slack Feedback Aggregator with Safe Fallback"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "GPT-3.5-TURBO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Based on this competitor research, provide a concise competitive analysis summary for our product specification.\n\nCompetitor Data:\n{{ $json.message.content }}\n\n\nCreate a brief summary (3-4 sentences) highlighting:\n1. What features competitors already offer that overlap with our planned features\n2. Key differentiation opportunities\n3. Recommended positioning strategy\n\nFormat as plain text for inclusion in a Notion document.\n\n# CompetitorData\n\nStructured competitor dataset that includes:\n\n1-Competitor name\n\n2-Website\n\n3-Relevant features\n\n4-Pricing information\n\n5-Market position\n\n#Tools:\n\n## Perplexity\n\nUse this tool to retrieve concise research insights and summaries from trusted sources.\n\nIn your response, integrate:\n\nThe main points surfaced by Perplexity\n\nAny contextual insights that complement CompetitorData\n\n## Tavily\n\nUse this tool to retrieve relevant search results from the web.\n\nIn your response, include:\n\nThe most relevant titles and snippets\n\nLinks if they provide unique insights beyond CompetitorData\n\n\n\nInstructions for Use\n\nWhen writing your competitive analysis:\n\nPrefer CompetitorData as the authoritative baseline.\n\nUse Perplexity, Tavily, and Apify only to supplement or validate the structured data.\n\nReconcile duplicates and highlight conflicts with “(conflict)”.\n\nDo not invent or hallucinate data if none is present.\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        384,
+        -32
+      ],
+      "id": "b9e19282-4d13-4953-b0f6-3331b9f15a30",
+      "name": "Analyze the Competition",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "sonar-deep-research",
+        "messages": {
+          "message": [
+            {
+              "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message0_Text', ``, 'string') }}"
+            }
+          ]
+        },
+        "simplify": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify_Output', ``, 'boolean') }}",
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [
+        352,
+        240
+      ],
+      "id": "f84fade6-b506-41cf-9105-0b6b3867b509",
+      "name": "Perplexity-Deep Research",
+      "credentials": {
+        "perplexityApi": {
+          "id": "",
+          "name": "Perplexity account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "typeVersion": 1,
+      "position": [
+        560,
+        240
+      ],
+      "id": "18b2e269-7a7d-432a-b450-70d4c1f2f2a7",
+      "name": "Relevant search results from the web",
+      "credentials": {
+        "tavilyApi": {
+          "id": "",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_private_download }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "slackApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1376,
+        368
+      ],
+      "id": "efc5836f-9bf2-41e6-884d-995498adc4dd",
+      "name": "Download File",
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9e93629c-39d2-472f-9b18-95dc8ad340a4",
+              "leftValue": "={{ $json.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -928,
+        368
+      ],
+      "id": "bbe21816-4d18-4510-ac7e-75a49ce6f734",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": ""
+        },
+        "text": "=🚨 Transcription returned empty.  Workflow: {{$workflow.name}} (run #{{$execution.id}}) Node: Convert Voice to Text Time: {{$now}} File: {{ $json.file?.name || 'unknown' }} Channel: {{ $json.channel || 'N/A' }}  Next steps: 1) Verify audio quality / length 2) Re-upload and re-run 3) If it persists, check logs for this run ID",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -624,
+        512
+      ],
+      "id": "a1dc07b9-f62d-40b1-8221-1638e4b88a91",
+      "name": "Notify on Empty Transcription (SpecGen Agent)",
+      "webhookId": "",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account 5"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Create Notion Page": {
+      "main": [
+        [
+          {
+            "node": "Extract Key Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Key Terms": {
+      "main": [
+        [
+          {
+            "node": "Search for messages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Analyze the Competition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capture the Idea from Slack": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Voice to Text": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize & Format": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a database page": {
+      "main": [
+        [
+          {
+            "node": "Notify in Slack Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for messages": {
+      "main": [
+        [
+          {
+            "node": "Slack Feedback Aggregator with Safe Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Normalize Notion Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Notion Payload": {
+      "main": [
+        [
+          {
+            "node": "Update a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Feedback Aggregator with Safe Fallback": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Analyze the Competition": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity-Deep Research": {
+      "ai_tool": [
+        [
+          {
+            "node": "Analyze the Competition",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relevant search results from the web": {
+      "ai_tool": [
+        [
+          {
+            "node": "Analyze the Competition",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Convert Voice to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Summarize & Format",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify on Empty Transcription (SpecGen Agent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "id": "bEK03pAmzjUyBdDF",
+  "tags": [
+    {
+      "createdAt": "2025-09-04T21:14:36.463Z",
+      "updatedAt": "2025-09-04T21:14:36.463Z",
+      "id": "Zm7oEyKM4k1TU5Rj",
+      "name": "AI Automation"
+    },
+    {
+      "createdAt": "2025-09-04T21:14:36.848Z",
+      "updatedAt": "2025-09-04T21:14:36.848Z",
+      "id": "c7snYTeO0aKi0K8b",
+      "name": "Product Management"
+    }
+  ]
+}
